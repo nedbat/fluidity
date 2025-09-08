@@ -1,3 +1,5 @@
+import dataclasses
+
 from drawing import cairo_context
 
 import super_simplex
@@ -20,9 +22,8 @@ def draw_lines(ctx, points, closed=True):
     ctx.stroke()
 
 
-def draw_hobby(ctx, points):
+def draw_hobby(ctx, points, ctrls):
     numpt = len(points)
-    ctrls = hobby_points(points)
     ctx.move_to(*points[0])
     for i in range(numpt):
         ctx.curve_to(*ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt])
@@ -53,44 +54,53 @@ class HilbertSorter:
         return sorted_points
 
 
+@dataclasses.dataclass
 class Fluidity:
-    def __init__(
-        self,
-        seed: int = 17,
-        npoints: int = 10,
-        nlines: int = 100,
-        ystep: float = 0.002,
-    ):
-        self.gen_simplex = super_simplex.Gener([seed])
+    seed: int = 17
+    npoints: int = 10
+    nlines: int = 100
+    ystep: float = 0.002
+    one_order: bool = False
 
-        self.lines = [
+    def __post_init__(self):
+        self.gen_simplex = super_simplex.Gener([self.seed])
+
+        lines = [
             [
                 (
-                    self.simplex(i * 17.5 + 1, j * ystep + 0.001) * 300 + 300,
-                    self.simplex(i * 17.5 + 2, j * ystep + 0.002) * 300 + 300,
+                    self.simplex(i * 17.5 + 1, j * self.ystep + 0.001) * 300 + 300,
+                    self.simplex(i * 17.5 + 2, j * self.ystep + 0.002) * 300 + 300,
                 )
-                for i in range(npoints)
+                for i in range(self.npoints)
             ]
-            for j in range(nlines)
+            for j in range(self.nlines)
         ]
+
+        self.lines = []
+        self.ctrls = []
+        sorter = HilbertSorter()
+        if self.one_order:
+            sorter.choose_order(lines[0])
+        for line in lines:
+            if not self.one_order:
+                sorter.choose_order(line)
+            line = sorter.sort(line)
+            self.lines.append(line)
+            self.ctrls.append(hobby_points(line))
+
+    def tweak(self, **changes):
+        return dataclasses.replace(self, **changes)
 
     def simplex(self, x, y):
         return self.gen_simplex.noise_2d(x, y)[0]
 
     def draw(
         self,
-        line_color=(1, 0.2, 0.2, 0.3),
+        line_color=None,
         curve_color=(0, 0, 0, 0.3),
-        one_order=False,
     ):
-        sorter = HilbertSorter()
-        if one_order:
-            sorter.choose_order(self.lines[0])
         with cairo_context(600, 600, format="svg") as context:
-            for line in self.lines:
-                if not one_order:
-                    sorter.choose_order(line)
-                line = sorter.sort(line)
+            for line, ctrl in zip(self.lines, self.ctrls):
                 if line_color is not None:
                     context.set_source_rgba(*line_color)
                     context.set_line_width(0.05)
@@ -98,7 +108,7 @@ class Fluidity:
                 if curve_color is not None:
                     context.set_source_rgba(*curve_color)
                     context.set_line_width(0.25)
-                    draw_hobby(context, line)
+                    draw_hobby(context, line, ctrl)
         return context
 
     def draw_points(self):
