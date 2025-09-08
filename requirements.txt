@@ -1,0 +1,10 @@
+# On mac will also need:
+#   brew install cmake pkgconf cairo
+hilbertcurve
+ipywidgets
+jupyterlab
+numba
+numpy
+pillow
+pycairo
+super_simplex
