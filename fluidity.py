@@ -68,8 +68,8 @@ class Fluidity:
         lines = [
             [
                 (
-                    self.simplex(i * 17.5 + 1, j * self.ystep + 0.001) * 300 + 300,
-                    self.simplex(i * 17.5 + 2, j * self.ystep + 0.002) * 300 + 300,
+                    self.simplex(i * 17.5 + 1, j * self.ystep + 0.001),
+                    self.simplex(i * 17.5 + 2, j * self.ystep + 0.002),
                 )
                 for i in range(self.npoints)
             ]
@@ -88,26 +88,33 @@ class Fluidity:
             self.lines.append(line)
             self.ctrls.append(hobby_points(line))
 
-    def tweak(self, **changes):
-        return dataclasses.replace(self, **changes)
-
     def simplex(self, x, y):
         return self.gen_simplex.noise_2d(x, y)[0]
 
+    def tweak(self, **changes):
+        return dataclasses.replace(self, **changes)
+
     def draw(
         self,
+        *,
         line_color=None,
         curve_color=(0, 0, 0, 0.3),
+        format="svg",
+        size=(600, 600),
     ):
-        with cairo_context(600, 600, format="svg") as context:
+        sizew, sizeh = size
+        scale = min(sizew / 2, sizeh / 2)
+        with cairo_context(*size, format=format) as context:
+            context.translate(sizew / 2, sizeh / 2)
+            context.scale(scale, scale)
             for line, ctrl in zip(self.lines, self.ctrls):
                 if line_color is not None:
                     context.set_source_rgba(*line_color)
-                    context.set_line_width(0.05)
+                    context.set_line_width(0.05 / scale)
                     draw_lines(context, line)
                 if curve_color is not None:
                     context.set_source_rgba(*curve_color)
-                    context.set_line_width(0.25)
+                    context.set_line_width(0.25 / scale)
                     draw_hobby(context, line, ctrl)
         return context
 
