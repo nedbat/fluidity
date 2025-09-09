@@ -51,7 +51,23 @@ class HilbertSorter:
     def sort(self, points):
         pointsa = np.array(points)
         sorted_points = pointsa[self.sorted_indices]
-        return sorted_points
+        return sorted_points.tolist()
+
+
+class BBox:
+    def __init__(self):
+        self.points = []
+
+    def add_points(self, pointss):
+        for points in pointss:
+            self.points.extend(points)
+
+    def bbox(self):
+        pointsa = np.array(self.points)
+        return [
+            tuple(pointsa.min(axis=0).tolist()),
+            tuple(pointsa.max(axis=0).tolist()),
+        ]
 
 
 @dataclasses.dataclass
@@ -93,6 +109,12 @@ class Fluidity:
 
     def tweak(self, **changes):
         return dataclasses.replace(self, **changes)
+
+    def bbox(self):
+        bbox = BBox()
+        bbox.add_points(self.lines)
+        bbox.add_points(self.ctrls)
+        return bbox.bbox()
 
     def draw(
         self,
