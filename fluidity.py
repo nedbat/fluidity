@@ -1,4 +1,5 @@
 import dataclasses
+from typing import Any
 
 from drawing import cairo_context
 
@@ -54,42 +55,47 @@ class HilbertSorter:
         return sorted_points.tolist()
 
 
-class BBox:
-    def __init__(self):
-        self.points = []
-
-    def add_points(self, pointss):
-        for points in pointss:
-            self.points.extend(points)
-
-    def bbox(self):
-        pointsa = np.array(self.points)
-        return [
-            tuple(pointsa.min(axis=0).tolist()),
-            tuple(pointsa.max(axis=0).tolist()),
-        ]
-
-
-@dataclasses.dataclass
-class Fluidity:
-    seed: int = 17
-    npoints: int = 10
-    nlines: int = 100
-    ystep: float = 0.002
-    one_order: bool = False
+@dataclasses.dataclass(kw_only=True)
+class LinearNoise:
+    seed: int = 1
+    # Incremental changes: change of 1 makes very small change in output.
+    istart: float = 0.001
+    istep: float = 0.002
+    # Jump changes: change of 1 makes uncorrelated change in output.
+    jstart: float = 1.0
+    jstep: float = 17.0
 
     def __post_init__(self):
         self.gen_simplex = super_simplex.Gener([self.seed])
 
+    def _simplex(self, x, y):
+        return self.gen_simplex.noise_2d(x, y)[0]
+
+    def point(self, i, j):
+        # i changes a little, j changes a lot
+        return (
+            self._simplex(
+                i * self.istep + self.istart,
+                j * self.jstep + self.jstart,
+            ),
+            self._simplex(
+                i * self.istep + self.istart + 1,
+                j * self.jstep + self.jstart,
+            ),
+        )
+
+
+@dataclasses.dataclass
+class Fluidity:
+    noise: Any
+    npoints: int = 10
+    nlines: int = 100
+    one_order: bool = False
+
+    def __post_init__(self):
         lines = [
-            [
-                (
-                    self.simplex(i * 17.5 + 1, j * self.ystep + 0.001),
-                    self.simplex(i * 17.5 + 2, j * self.ystep + 0.002),
-                )
-                for i in range(self.npoints)
-            ]
-            for j in range(self.nlines)
+            [self.noise.point(i, j) for j in range(self.npoints)]
+            for i in range(self.nlines)
         ]
 
         self.lines = []
@@ -104,17 +110,8 @@ class Fluidity:
             self.lines.append(line)
             self.ctrls.append(hobby_points(line))
 
-    def simplex(self, x, y):
-        return self.gen_simplex.noise_2d(x, y)[0]
-
     def tweak(self, **changes):
         return dataclasses.replace(self, **changes)
-
-    def bbox(self):
-        bbox = BBox()
-        bbox.add_points(self.lines)
-        bbox.add_points(self.ctrls)
-        return bbox.bbox()
 
     def draw(
         self,
