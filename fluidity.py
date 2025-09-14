@@ -23,11 +23,26 @@ def draw_lines(ctx, points, *, closed):
     ctx.stroke()
 
 
-def draw_hobby(ctx, points, ctrls):
+def hobby_dlist(points, ctrls):
+    dlist = []
     numpt = len(points)
-    ctx.move_to(*points[0])
+    dlist.append(("move_to", *points[0]))
     for i in range(numpt):
-        ctx.curve_to(*ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt])
+        dlist.append(("curve_to", *ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt]))
+    return dlist
+
+def draw_dlist(ctx, dlist):
+    for op, *args in dlist:
+        getattr(ctx, op)(*args)
+
+def draw_dlists(ctx, dlists):
+    for dlist in dlists:
+        draw_dlist(ctx, dlist)
+        ctx.stroke()
+
+def draw_hobby(ctx, points, ctrls):
+    dlist = hobby_dlist(points, ctrls)
+    draw_dlist(ctx, dlist)
     ctx.stroke()
 
 
@@ -144,7 +159,8 @@ class Fluidity:
 
             context.set_source_rgba(0, 0, 0, 0.993)
             context.set_line_width(0.25 / scale)
-            self._draw_raw_curves(context)
+            #self._draw_raw_curves(context)
+            draw_dlists(context, self.dlists())
             context.rectangle(-1, -1, 2, 2)
             context.move_to(0, -1)
             context.line_to(0, 1)
@@ -171,6 +187,12 @@ class Fluidity:
     def _draw_raw_curves(self, context):
         for line, ctrl in zip(self.lines, self.ctrls):
             draw_hobby(context, line, ctrl)
+
+    def dlists(self):
+        dlists = []
+        for line, ctrl in zip(self.lines, self.ctrls):
+            dlists.append(hobby_dlist(line, ctrl))
+        return dlists
 
     def draw_points(self):
         with cairo_context(600, 600, format="svg") as context:
