@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Any
 
-from drawing import cairo_context
+from drawing import cairo_context, _CairoBoundingBox
 
 import super_simplex
 import numpy as np
@@ -14,7 +14,7 @@ def hobby_points(points):
     return curve.get_ctrl_points()
 
 
-def draw_lines(ctx, points, closed=True):
+def draw_lines(ctx, points, *, closed):
     ctx.move_to(*points[0])
     for pt in points[1:]:
         ctx.line_to(*pt)
@@ -122,20 +122,55 @@ class Fluidity:
         size=(600, 600),
     ):
         sizew, sizeh = size
-        scale = min(sizew / 2, sizeh / 2)
+        x1, y1, x2, y2 = self.bbox()
+        extra = 1
+        x1 -= extra
+        y1 -= extra
+        x2 += extra
+        y2 += extra
         with cairo_context(*size, format=format) as context:
-            context.translate(sizew / 2, sizeh / 2)
+            content_width = x2 - x1
+            content_height = y2 - y1
+    
+            scale_x = sizew / content_width
+            scale_y = sizeh / content_height
+            scale = min(scale_x, scale_y)
+    
+            offset_x = (sizew - content_width * scale) / 2 - x1 * scale
+            offset_y = (sizeh - content_height * scale) / 2 - y1 * scale
+            context.translate(offset_x, offset_y)
+    
             context.scale(scale, scale)
-            for line, ctrl in zip(self.lines, self.ctrls):
-                if line_color is not None:
-                    context.set_source_rgba(*line_color)
-                    context.set_line_width(0.05 / scale)
-                    draw_lines(context, line)
-                if curve_color is not None:
-                    context.set_source_rgba(*curve_color)
-                    context.set_line_width(0.25 / scale)
-                    draw_hobby(context, line, ctrl)
+
+            context.set_source_rgba(0, 0, 0, 0.993)
+            context.set_line_width(0.25 / scale)
+            self._draw_raw_curves(context)
+            context.rectangle(-1, -1, 2, 2)
+            context.move_to(0, -1)
+            context.line_to(0, 1)
+            context.move_to(-1, 0)
+            context.line_to(1, 0)
+            context.rectangle(x1+extra, y1+extra, x2-x1-(2*extra), y2-y1-(2*extra))
+            context.stroke()
         return context
+
+    def _draw_raw(self, context, line_color=None, curve_color=None):
+        # scale = min(sizew / 2, sizeh / 2)
+        # context.translate(sizew / 2, sizeh / 2)
+        # context.scale(scale, scale)
+        for line, ctrl in zip(self.lines, self.ctrls):
+            if line_color is not None:
+                context.set_source_rgba(*line_color)
+                context.set_line_width(0.05 / scale)
+                draw_lines(context, line, closed=True)
+            if curve_color is not None:
+                context.set_source_rgba(*curve_color)
+                context.set_line_width(0.25 / scale)
+                draw_hobby(context, line, ctrl)
+
+    def _draw_raw_curves(self, context):
+        for line, ctrl in zip(self.lines, self.ctrls):
+            draw_hobby(context, line, ctrl)
 
     def draw_points(self):
         with cairo_context(600, 600, format="svg") as context:
@@ -143,3 +178,11 @@ class Fluidity:
             for line in zip(*self.lines):
                 draw_lines(context, line, closed=False)
         return context
+
+    def bbox(self):
+        with _CairoBoundingBox(1000, 1000) as context:
+            context.translate(500, 500)
+            context.scale(500, 500)
+            context.set_line_width(1)
+            self._draw_raw_curves(context)
+        return [v/1000.0 for v in context.bbox]

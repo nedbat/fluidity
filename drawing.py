@@ -133,6 +133,17 @@ class _CairoPng(_CairoContext):
             return self.pngio.getvalue()
 
 
+class _CairoBoundingBox(_CairoContext):
+
+    def __init__(self, width: int, height: int):
+        super().__init__(width, height, output=None)
+        self.surface = cairo.RecordingSurface(cairo.CONTENT_COLOR_ALPHA, None)
+        self.ctx = cairo.Context(self.surface)
+
+    def __exit__(self, typ, val, tb):
+        self.bbox = self.surface.ink_extents()
+
+
 def cairo_context(
     width: int, height: int, format: str = "svg", output: str | None = None
 ):
