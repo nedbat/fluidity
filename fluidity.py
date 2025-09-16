@@ -106,6 +106,7 @@ class Fluidity:
     npoints: int = 10
     nlines: int = 100
     one_order: bool = False
+    sorter: HilbertSorter | None = None
 
     def __post_init__(self):
         lines = [
@@ -115,13 +116,14 @@ class Fluidity:
 
         self.lines = []
         self.ctrls = []
-        sorter = HilbertSorter()
-        if self.one_order:
-            sorter.choose_order(lines[0])
+        if self.sorter is None:
+            self.sorter = HilbertSorter()
+            if self.one_order:
+                self.sorter.choose_order(lines[0])
         for line in lines:
             if not self.one_order:
-                sorter.choose_order(line)
-            line = sorter.sort(line)
+                self.sorter.choose_order(line)
+            line = self.sorter.sort(line)
             self.lines.append(line)
             self.ctrls.append(hobby_points(line))
 
