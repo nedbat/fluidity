@@ -1,4 +1,5 @@
 import dataclasses
+import math
 from typing import Any
 
 from drawing import cairo_context, _CairoBoundingBox
@@ -28,17 +29,22 @@ def hobby_dlist(points, ctrls):
     numpt = len(points)
     dlist.append(("move_to", *points[0]))
     for i in range(numpt):
-        dlist.append(("curve_to", *ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt]))
+        dlist.append(
+            ("curve_to", *ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt])
+        )
     return dlist
+
 
 def draw_dlist(ctx, dlist):
     for op, *args in dlist:
         getattr(ctx, op)(*args)
 
+
 def draw_dlists(ctx, dlists):
     for dlist in dlists:
         draw_dlist(ctx, dlist)
         ctx.stroke()
+
 
 def draw_hobby(ctx, points, ctrls):
     dlist = hobby_dlist(points, ctrls)
@@ -71,14 +77,8 @@ class HilbertSorter:
 
 
 @dataclasses.dataclass(kw_only=True)
-class LinearNoise:
+class Noise:
     seed: int = 1
-    # Incremental changes: change of 1 makes very small change in output.
-    istart: float = 0.001
-    istep: float = 0.002
-    # Jump changes: change of 1 makes uncorrelated change in output.
-    jstart: float = 1.0
-    jstep: float = 17.0
 
     def __post_init__(self):
         self.gen_simplex = super_simplex.Gener([self.seed])
@@ -86,17 +86,50 @@ class LinearNoise:
     def _simplex(self, x, y):
         return self.gen_simplex.noise_2d(x, y)[0]
 
+
+@dataclasses.dataclass(kw_only=True)
+class LinearNoise(Noise):
+    # Incremental changes: change of 1 makes very small change in output.
+    istart: float = 0.001
+    istep: float = 0.002
+    # Jump changes: change of 1 makes uncorrelated change in output.
+    jstart: float = 1.0
+    jstep: float = 17.0
+
     def point(self, i, j):
         # i changes a little, j changes a lot
+        sx = i * self.istep + self.istart
+        sy = j * self.jstep + self.jstart
         return (
-            self._simplex(
-                i * self.istep + self.istart,
-                j * self.jstep + self.jstart,
-            ),
-            self._simplex(
-                i * self.istep + self.istart + 1,
-                j * self.jstep + self.jstart,
-            ),
+            self._simplex(sx, sy),
+            self._simplex(sx + 1, sy),
+        )
+
+
+@dataclasses.dataclass(kw_only=True)
+class CircularNoise(Noise):
+    # Incremental changes: change of 1 makes very small change in output.
+    istart: int = 0
+    istep: float = 0.002
+    isteps: int = 50
+    # Jump changes: change of 1 makes uncorrelated change in output.
+    jstart: float = 1.0
+    jstep: float = 17.0
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.r = self.istep * self.isteps / (2 * math.pi)
+
+    def point(self, i, j):
+        # i changes a little, j changes a lot
+        sx = 42.17
+        sy = j * self.jstep + self.jstart
+        theta = 2 * math.pi / self.isteps * ((self.istart + i) % self.isteps)
+        dx = self.r * math.cos(theta)
+        dy = self.r * math.sin(theta)
+        return (
+            self._simplex(sx + dx, sy + dy),
+            self._simplex(sx + 1 + dx, sy + dy),
         )
 
 
@@ -148,27 +181,29 @@ class Fluidity:
         with cairo_context(*size, format=format) as context:
             content_width = x2 - x1
             content_height = y2 - y1
-    
+
             scale_x = sizew / content_width
             scale_y = sizeh / content_height
             scale = min(scale_x, scale_y)
-    
+
             offset_x = (sizew - content_width * scale) / 2 - x1 * scale
             offset_y = (sizeh - content_height * scale) / 2 - y1 * scale
             context.translate(offset_x, offset_y)
-    
+
             context.scale(scale, scale)
 
             context.set_source_rgba(0, 0, 0, 0.993)
             context.set_line_width(0.25 / scale)
-            #self._draw_raw_curves(context)
+            # self._draw_raw_curves(context)
             draw_dlists(context, self.dlists())
             context.rectangle(-1, -1, 2, 2)
             context.move_to(0, -1)
             context.line_to(0, 1)
             context.move_to(-1, 0)
             context.line_to(1, 0)
-            context.rectangle(x1+extra, y1+extra, x2-x1-(2*extra), y2-y1-(2*extra))
+            context.rectangle(
+                x1 + extra, y1 + extra, x2 - x1 - (2 * extra), y2 - y1 - (2 * extra)
+            )
             context.stroke()
         return context
 
@@ -209,4 +244,4 @@ class Fluidity:
             context.scale(500, 500)
             context.set_line_width(1)
             self._draw_raw_curves(context)
-        return [v/1000.0 for v in context.bbox]
+        return [v / 1000.0 for v in context.bbox]
