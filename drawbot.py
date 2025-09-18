@@ -20,6 +20,8 @@ def draw_dlist(dlist):
                 moveTo((x, y))
             case ["curve_to", a, b, c, d, e, f]:
                 curveTo((a, b), (c, d), (e, f))
+            case ["close_path"]:
+                closePath()
 
 def draw_dlists(dlists):
     for dlist in dlists:
@@ -54,3 +56,6 @@ for i in range(FRAMES):
     draw_dlists(f.dlists())
 
 saveImage("f.gif", imageGIFLoop=True)
+
+# the svg's don't seem to close the curve path properly?
+# saveImage("f.svg", multipage=True)

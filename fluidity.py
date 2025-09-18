@@ -32,6 +32,7 @@ def hobby_dlist(points, ctrls):
         dlist.append(
             ("curve_to", *ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt])
         )
+    dlist.append(("close_path",))
     return dlist
 
 
