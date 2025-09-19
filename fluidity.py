@@ -8,11 +8,17 @@ import super_simplex
 import numpy as np
 from hilbertcurve.hilbertcurve import HilbertCurve
 from hobby import HobbyCurve
+from cubic_bezier_spline import new_closed_interpolating_spline
 
 
 def hobby_points(points):
     curve = HobbyCurve(points, cyclic=True)
     return curve.get_ctrl_points()
+
+
+def cubic_points(points):
+    cbc = new_closed_interpolating_spline(points)
+    return cbc.cpts
 
 
 def draw_lines(ctx, points, *, closed):
@@ -32,6 +38,15 @@ def hobby_dlist(points, ctrls):
         dlist.append(
             ("curve_to", *ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt])
         )
+    dlist.append(("close_path",))
+    return dlist
+
+
+def curve_dlist(curve):
+    dlist = []
+    dlist.append(("move_to", *curve[0][0]))
+    for seg in curve:
+        dlist.append(("curve_to", *seg[1], *seg[2], *seg[3]))
     dlist.append(("close_path",))
     return dlist
 
@@ -141,6 +156,7 @@ class Fluidity:
     nlines: int = 100
     one_order: bool = False
     sorter: HilbertSorter | None = None
+    curve: str = "hobby"
 
     def __post_init__(self):
         lines = [
@@ -150,6 +166,7 @@ class Fluidity:
 
         self.lines = []
         self.ctrls = []
+        self.curves = []
         if self.sorter is None:
             self.sorter = HilbertSorter()
             if self.one_order:
@@ -160,6 +177,7 @@ class Fluidity:
             line = self.sorter.sort(line)
             self.lines.append(line)
             self.ctrls.append(hobby_points(line))
+            self.curves.append(cubic_points(line))
 
     def tweak(self, **changes):
         return dataclasses.replace(self, **changes)
@@ -173,63 +191,27 @@ class Fluidity:
         size=(600, 600),
     ):
         sizew, sizeh = size
-        x1, y1, x2, y2 = self.bbox()
-        extra = 1
-        x1 -= extra
-        y1 -= extra
-        x2 += extra
-        y2 += extra
         with cairo_context(*size, format=format) as context:
-            content_width = x2 - x1
-            content_height = y2 - y1
-
-            scale_x = sizew / content_width
-            scale_y = sizeh / content_height
+            scale_x = sizew / 2
+            scale_y = sizeh / 2
             scale = min(scale_x, scale_y)
-
-            offset_x = (sizew - content_width * scale) / 2 - x1 * scale
-            offset_y = (sizeh - content_height * scale) / 2 - y1 * scale
+            offset_x = (sizew - 2 * scale) / 2 + scale
+            offset_y = (sizeh - 2 * scale) / 2 + scale
             context.translate(offset_x, offset_y)
-
             context.scale(scale, scale)
-
             context.set_source_rgba(0, 0, 0, 0.993)
             context.set_line_width(0.25 / scale)
-            # self._draw_raw_curves(context)
             draw_dlists(context, self.dlists())
-            context.rectangle(-1, -1, 2, 2)
-            context.move_to(0, -1)
-            context.line_to(0, 1)
-            context.move_to(-1, 0)
-            context.line_to(1, 0)
-            context.rectangle(
-                x1 + extra, y1 + extra, x2 - x1 - (2 * extra), y2 - y1 - (2 * extra)
-            )
-            context.stroke()
         return context
-
-    def _draw_raw(self, context, line_color=None, curve_color=None):
-        # scale = min(sizew / 2, sizeh / 2)
-        # context.translate(sizew / 2, sizeh / 2)
-        # context.scale(scale, scale)
-        for line, ctrl in zip(self.lines, self.ctrls):
-            if line_color is not None:
-                context.set_source_rgba(*line_color)
-                context.set_line_width(0.05 / scale)
-                draw_lines(context, line, closed=True)
-            if curve_color is not None:
-                context.set_source_rgba(*curve_color)
-                context.set_line_width(0.25 / scale)
-                draw_hobby(context, line, ctrl)
-
-    def _draw_raw_curves(self, context):
-        for line, ctrl in zip(self.lines, self.ctrls):
-            draw_hobby(context, line, ctrl)
 
     def dlists(self):
         dlists = []
-        for line, ctrl in zip(self.lines, self.ctrls):
-            dlists.append(hobby_dlist(line, ctrl))
+        if self.curve == "hobby":
+            for line, ctrl in zip(self.lines, self.ctrls):
+                dlists.append(hobby_dlist(line, ctrl))
+        else:
+            for curve in self.curves:
+                dlists.append(curve_dlist(curve))
         return dlists
 
     def draw_points(self):
@@ -238,11 +220,3 @@ class Fluidity:
             for line in zip(*self.lines):
                 draw_lines(context, line, closed=False)
         return context
-
-    def bbox(self):
-        with _CairoBoundingBox(1000, 1000) as context:
-            context.translate(500, 500)
-            context.scale(500, 500)
-            context.set_line_width(1)
-            self._draw_raw_curves(context)
-        return [v / 1000.0 for v in context.bbox]
