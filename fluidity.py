@@ -165,19 +165,28 @@ class Fluidity:
         ]
 
         self.lines = []
-        self.ctrls = []
         self.curves = []
+
         if self.sorter is None:
             self.sorter = HilbertSorter()
             if self.one_order:
                 self.sorter.choose_order(lines[0])
+
         for line in lines:
             if not self.one_order:
                 self.sorter.choose_order(line)
             line = self.sorter.sort(line)
             self.lines.append(line)
-            self.ctrls.append(hobby_points(line))
-            self.curves.append(cubic_points(line))
+            if self.curve == "hobby":
+                ctrls = hobby_points(line)
+                curve = []
+                for i in range(len(line)):
+                    curve.append(
+                        (line[i], ctrls[2 * i], ctrls[2 * i + 1], line[(i + 1) % len(line)])
+                    )
+                self.curves.append(curve)
+            else:
+                self.curves.append(cubic_points(line))
 
     def tweak(self, **changes):
         return dataclasses.replace(self, **changes)
@@ -186,9 +195,10 @@ class Fluidity:
         self,
         *,
         line_color=None,
-        curve_color=(0, 0, 0, 0.3),
+        curve_color=(0, 0, 0, 1),
         format="svg",
         size=(600, 600),
+        ptcolor=None,
     ):
         sizew, sizeh = size
         with cairo_context(*size, format=format) as context:
@@ -199,20 +209,19 @@ class Fluidity:
             offset_y = (sizeh - 2 * scale) / 2 + scale
             context.translate(offset_x, offset_y)
             context.scale(scale, scale)
-            context.set_source_rgba(0, 0, 0, 0.993)
+            context.set_source_rgba(*curve_color)
             context.set_line_width(0.25 / scale)
             draw_dlists(context, self.dlists())
+            if ptcolor:
+                context.set_source_rgba(*ptcolor)
+                for line in self.lines:
+                    for pt in line:
+                        context.arc(*pt, 2/scale, 0, math.pi*2)
+                        context.fill()
         return context
 
     def dlists(self):
-        dlists = []
-        if self.curve == "hobby":
-            for line, ctrl in zip(self.lines, self.ctrls):
-                dlists.append(hobby_dlist(line, ctrl))
-        else:
-            for curve in self.curves:
-                dlists.append(curve_dlist(curve))
-        return dlists
+        return [curve_dlist(c) for c in self.curves]
 
     def draw_points(self):
         with cairo_context(600, 600, format="svg") as context:

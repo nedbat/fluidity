@@ -45,15 +45,19 @@ def start_page():
 
 sorter = None
 for i in range(FRAMES):
-    ii = 0.01
     if i > 0:
         newPage()
-    #f = Fluidity(LinearNoise(seed=55, istep=ii, istart=ii*i), npoints=15, nlines=10, one_order=True, sorter=sorter)
-    f = Fluidity(CircularNoise(seed=SEED, isteps=FRAMES, istep=ii, istart=i), npoints=NPOINTS, nlines=NLINES, one_order=True, sorter=sorter, curve="cubic")
+    f = Fluidity(CircularNoise(seed=SEED, isteps=FRAMES, istep=ISTEP, istart=i), npoints=NPOINTS, nlines=NLINES, one_order=True, sorter=sorter, curve="cubic")
     if i == 0:
         sorter = f.sorter
     start_page()
     draw_dlists(f.dlists())
+    fill(1, 0, 0, 1)
+    stroke(None)
+    for line in f.lines:
+        for pt in line:
+            oval(*pt, 4/W, 4/W)
+    drawPath()
 
 saveImage("f.gif", imageGIFLoop=True)
 
