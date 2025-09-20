@@ -2,7 +2,7 @@ import dataclasses
 import math
 from typing import Any
 
-from drawing import cairo_context, _CairoBoundingBox
+from drawing import cairo_context
 
 import super_simplex
 import numpy as np
