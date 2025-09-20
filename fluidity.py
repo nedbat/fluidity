@@ -73,6 +73,7 @@ class HilbertSorter:
         self.sorted_indices = np.argsort(hilbert_distances)
 
     def sort(self, points):
+        #return points
         pointsa = np.array(points)
         sorted_points = pointsa[self.sorted_indices]
         return sorted_points.tolist()
@@ -174,31 +175,44 @@ class Fluidity:
     def draw(
         self,
         *,
-        line_color=None,
-        curve_color=(0, 0, 0, 1),
         format="svg",
         size=(600, 600),
-        ptcolor=None,
+        **kwargs,
+    ):
+        with cairo_context(*size, format=format) as context:
+            self.draw_in_context(context, size, **kwargs)
+        return context
+
+    def draw_in_context(
+        self,
+        context,
+        size,
+        *,
+        curve_color=(0, 0, 0, 1),
+        point_color=None,
     ):
         sizew, sizeh = size
-        with cairo_context(*size, format=format) as context:
-            scale_x = sizew / 2
-            scale_y = sizeh / 2
-            scale = min(scale_x, scale_y)
-            offset_x = (sizew - 2 * scale) / 2 + scale
-            offset_y = (sizeh - 2 * scale) / 2 + scale
-            context.translate(offset_x, offset_y)
-            context.scale(scale, scale)
-            context.set_source_rgba(*curve_color)
-            context.set_line_width(0.25 / scale)
-            draw_dlists(context, self.dlists())
-            if ptcolor:
-                context.set_source_rgba(*ptcolor)
-                for line in self.lines:
-                    for pt in line:
-                        context.arc(*pt, 2/scale, 0, math.pi*2)
-                        context.fill()
-        return context
+        scale_x = sizew / 2
+        scale_y = sizeh / 2
+        scale = min(scale_x, scale_y)
+        offset_x = (sizew - 2 * scale) / 2 + scale
+        offset_y = (sizeh - 2 * scale) / 2 + scale
+        context.translate(offset_x, offset_y)
+        context.scale(scale, scale)
+        context.rectangle(-1, -1, 2, 2)
+        context.set_source_rgb(1, 1, 1)
+        context.fill()
+
+        context.set_source_rgba(*curve_color)
+        context.set_line_width(0.25 / scale)
+        draw_dlists(context, self.dlists())
+
+        if point_color:
+            context.set_source_rgba(*point_color)
+            for line in self.lines:
+                for pt in line:
+                    context.circle(*pt, 2/scale)
+                    context.fill()
 
     def dlists(self):
         return [curve_dlist(c) for c in self.curves]

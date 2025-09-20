@@ -4,6 +4,8 @@ import contextlib
 import io
 import math
 import os.path
+import subprocess
+import tempfile
 
 import cairo
 import IPython.display
@@ -161,3 +163,33 @@ def cairo_context(
 def svg_row(*svgs):
     sbs = '<div style="display:flex; flex-direction: row; justify-content: space-evenly">{}</div>'
     return IPython.display.HTML(sbs.format("".join(s._repr_svg_() for s in svgs)))
+
+
+class Animation:
+    def __init__(self, *, size, output, frame_time=5):
+        self.size = size
+        self.output = output
+        self.frame_time = frame_time
+        self.context = None
+
+    def __enter__(self):
+        self.frame_num = 0
+        self.tempdir_ctx = tempfile.TemporaryDirectory()
+        self.tempdir = self.tempdir_ctx.__enter__()
+        self.new_frame()
+        return self
+
+    def new_frame(self):
+        if self.context is not None:
+            self.context.__exit__(None, None, None)
+            self.frame_num += 1
+        self.context = cairo_context(*self.size, format="png", output=f"{self.tempdir}/frame_{self.frame_num:04d}.png")
+        self.context.__enter__()
+
+    def __exit__(self, typ, val, tb):
+        subprocess.run(f"cp {self.tempdir}/frame_0000.png /tmp", shell=True)
+        subprocess.run(
+            f"convert -delay {self.frame_time} {self.tempdir}/frame_*.png -strip -coalesce -layers Optimize {self.output}",
+            shell=True,
+        )
+        self.tempdir_ctx.__exit__(typ, val, tb)
