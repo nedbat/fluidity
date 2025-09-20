@@ -11,12 +11,16 @@ from hobby import HobbyCurve
 from cubic_bezier_spline import new_closed_interpolating_spline
 
 
-def hobby_points(points):
-    curve = HobbyCurve(points, cyclic=True)
-    return curve.get_ctrl_points()
+def hobby_curve(points):
+    ctrls = HobbyCurve(points, cyclic=True).get_ctrl_points()
+    curve = []
+    for i in range(len(points)):
+        curve.append(
+            (points[i], ctrls[2 * i], ctrls[2 * i + 1], points[(i + 1) % len(points)])
+        )
+    return curve
 
-
-def cubic_points(points):
+def cubic_curve(points):
     cbc = new_closed_interpolating_spline(points)
     return cbc.cpts
 
@@ -28,18 +32,6 @@ def draw_lines(ctx, points, *, closed):
     if closed:
         ctx.close_path()
     ctx.stroke()
-
-
-def hobby_dlist(points, ctrls):
-    dlist = []
-    numpt = len(points)
-    dlist.append(("move_to", *points[0]))
-    for i in range(numpt):
-        dlist.append(
-            ("curve_to", *ctrls[2 * i], *ctrls[2 * i + 1], *points[(i + 1) % numpt])
-        )
-    dlist.append(("close_path",))
-    return dlist
 
 
 def curve_dlist(curve):
@@ -60,12 +52,6 @@ def draw_dlists(ctx, dlists):
     for dlist in dlists:
         draw_dlist(ctx, dlist)
         ctx.stroke()
-
-
-def draw_hobby(ctx, points, ctrls):
-    dlist = hobby_dlist(points, ctrls)
-    draw_dlist(ctx, dlist)
-    ctx.stroke()
 
 
 class HilbertSorter:
@@ -178,15 +164,9 @@ class Fluidity:
             line = self.sorter.sort(line)
             self.lines.append(line)
             if self.curve == "hobby":
-                ctrls = hobby_points(line)
-                curve = []
-                for i in range(len(line)):
-                    curve.append(
-                        (line[i], ctrls[2 * i], ctrls[2 * i + 1], line[(i + 1) % len(line)])
-                    )
-                self.curves.append(curve)
+                self.curves.append(hobby_curve(line))
             else:
-                self.curves.append(cubic_points(line))
+                self.curves.append(cubic_curve(line))
 
     def tweak(self, **changes):
         return dataclasses.replace(self, **changes)
