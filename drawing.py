@@ -161,9 +161,19 @@ def cairo_context(
 
 
 def svg_row(*svgs):
-    sbs = '<div style="display:flex; flex-direction: row; justify-content: space-evenly">{}</div>'
-    return IPython.display.HTML(sbs.format("".join(s._repr_svg_() for s in svgs)))
+    hrow = '<div style="display:flex; flex-direction: row; justify-content: space-evenly">{}</div>'
+    return IPython.display.HTML(hrow.format("".join(s._repr_svg_() for s in svgs)))
 
+def svg_table_html(rows):
+    hrow = '<div style="display:flex; flex-direction: row; justify-content: space-evenly">{}</div>'
+    htable = '<div style="display:flex; flex-direction: column; justify-content: space-evenly">{}</div>'
+    hrows = []
+    for row in rows:
+        hrows.append(hrow.format("".join(s._repr_svg_() for s in row)))
+    return htable.format("".join(hrows))
+
+def svg_table(rows):
+    return IPython.display.HTML(svg_table_html(rows))
 
 class Animation:
     def __init__(self, *, size, output, frame_time=5):

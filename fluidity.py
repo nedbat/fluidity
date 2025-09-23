@@ -1,6 +1,6 @@
 import dataclasses
 import math
-from typing import Any
+from typing import Any, Callable
 
 from drawing import cairo_context
 
@@ -55,6 +55,9 @@ def draw_dlists(ctx, dlists):
 
 
 class HilbertSorter:
+    def __init__(self):
+        self.sorted_indices = None
+
     def choose_order(self, points):
         P = 6  # 2^6 = 64 resolution per dimension
         hilbert_curve = HilbertCurve(P, 2)
@@ -72,11 +75,21 @@ class HilbertSorter:
         )
         self.sorted_indices = np.argsort(hilbert_distances)
 
-    def sort(self, points):
-        #return points
+    def _sort(self, points):
         pointsa = np.array(points)
         sorted_points = pointsa[self.sorted_indices]
         return sorted_points.tolist()
+
+class HilbertSortEveryLine(HilbertSorter):
+    def __call__(self, points):
+        self.choose_order(points)
+        return self._sort(points)
+
+class HilbertSortFirstLine(HilbertSorter):
+    def __call__(self, points):
+        if self.sorted_indices is None:
+            self.choose_order(points)
+        return self._sort(points)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -138,12 +151,11 @@ class CircularNoise(Noise):
 
 @dataclasses.dataclass
 class Fluidity:
-    noise: Any
+    noise: Noise
     npoints: int = 10
     nlines: int = 100
-    one_order: bool = False
     sorter: HilbertSorter | None = None
-    curve: str = "hobby"
+    curver: Callable = hobby_curve
 
     def __post_init__(self):
         lines = [
@@ -154,20 +166,11 @@ class Fluidity:
         self.lines = []
         self.curves = []
 
-        if self.sorter is None:
-            self.sorter = HilbertSorter()
-            if self.one_order:
-                self.sorter.choose_order(lines[0])
-
         for line in lines:
-            if not self.one_order:
-                self.sorter.choose_order(line)
-            line = self.sorter.sort(line)
+            if self.sorter is not None:
+                line = self.sorter(line)
             self.lines.append(line)
-            if self.curve == "hobby":
-                self.curves.append(hobby_curve(line))
-            else:
-                self.curves.append(cubic_curve(line))
+            self.curves.append(self.curver(line))
 
     def tweak(self, **changes):
         return dataclasses.replace(self, **changes)
@@ -211,7 +214,7 @@ class Fluidity:
             context.set_source_rgba(*point_color)
             for line in self.lines:
                 for pt in line:
-                    context.circle(*pt, 2/scale)
+                    context.circle(*pt, 1/scale)
                     context.fill()
 
     def dlists(self):
