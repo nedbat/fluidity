@@ -20,6 +20,7 @@ def hobby_curve(points):
         )
     return curve
 
+
 def cubic_curve(points):
     cbc = new_closed_interpolating_spline(points)
     return cbc.cpts
@@ -80,10 +81,12 @@ class HilbertSorter:
         sorted_points = pointsa[self.sorted_indices]
         return sorted_points.tolist()
 
+
 class HilbertSortEveryLine(HilbertSorter):
     def __call__(self, points):
         self.choose_order(points)
         return self._sort(points)
+
 
 class HilbertSortFirstLine(HilbertSorter):
     def __call__(self, points):
@@ -192,7 +195,11 @@ class Fluidity:
         size,
         *,
         curve_color=(0, 0, 0, 1),
+        curve_width=0.25,
         point_color=None,
+        point_size=1,
+        line_color=None,
+        line_width=0.25,
     ):
         sizew, sizeh = size
         scale_x = sizew / 2
@@ -206,23 +213,23 @@ class Fluidity:
         context.set_source_rgb(1, 1, 1)
         context.fill()
 
-        context.set_source_rgba(*curve_color)
-        context.set_line_width(0.25 / scale)
-        draw_dlists(context, self.dlists())
+        if line_color:
+            context.set_source_rgba(*line_color)
+            context.set_line_width(line_width / scale)
+            for line in self.lines:
+                draw_lines(context, line, closed=True)
+
+        if curve_color:
+            context.set_source_rgba(*curve_color)
+            context.set_line_width(curve_width / scale)
+            draw_dlists(context, self.dlists())
 
         if point_color:
             context.set_source_rgba(*point_color)
             for line in self.lines:
                 for pt in line:
-                    context.circle(*pt, 1/scale)
+                    context.circle(*pt, point_size / scale)
                     context.fill()
 
     def dlists(self):
         return [curve_dlist(c) for c in self.curves]
-
-    def draw_points(self):
-        with cairo_context(600, 600, format="svg") as context:
-            context.set_line_width(0.5)
-            for line in zip(*self.lines):
-                draw_lines(context, line, closed=False)
-        return context

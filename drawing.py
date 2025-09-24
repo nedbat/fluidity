@@ -199,7 +199,8 @@ class Animation:
     def __exit__(self, typ, val, tb):
         subprocess.run(f"cp {self.tempdir}/frame_0000.png /tmp", shell=True)
         subprocess.run(
-            f"convert -delay {self.frame_time} {self.tempdir}/frame_*.png -strip -coalesce -layers Optimize {self.output}",
+            f"magick -delay {self.frame_time} {self.tempdir}/frame_*.png -strip -coalesce -layers Optimize {self.output}",
             shell=True,
         )
+        print(f"Wrote {self.frame_num} frames to {self.output}")
         self.tempdir_ctx.__exit__(typ, val, tb)
