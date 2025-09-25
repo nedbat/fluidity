@@ -1,4 +1,4 @@
 .ipynb_checkpoints
 .venv
-f.gif
-f.mp4
+.DS_Store
+pix/
