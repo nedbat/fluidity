@@ -1,5 +1,7 @@
 # The diagrams for the blog post.
 
+import itertools
+
 from drawing import *
 from fluidity import *
 
@@ -30,14 +32,23 @@ with cairo_context(400, 400, format="png", output="pix/point_motion.png") as con
     f.draw_in_context(context, curve_color=None, point_color=(1, 0, 0, 1), point_size=1.5)
 
 
+SEEDS = [0, 5, 3]
 for fname, sorter in [
     ("hobby_unsorted.png", None),
     ("hobby_sorted.png", HilbertSortEveryLine()),
 ]:
     fs = [
-        Fluidity(LinearNoise(seed=s), npoints=10, nlines=1, curver=hobby_curve, sorter=sorter)
-        for s in [0, 3, 5]
+        Fluidity(LinearNoise(seed=seed), npoints=10, nlines=1, curver=hobby_curve, sorter=sorter)
+        for seed in SEEDS
     ]
     with cairo_context(1200, 400, output=f"pix/{fname}") as ctx:
         for f, tctx in zip(fs, context_tiles(ctx, rows=1, cols=3)):
             f.draw_in_context(tctx, curve_width=1, point_color=(1, 0, 0, 1), point_size=4, line_color=(0, 1, 0, 1), line_width=1)
+
+
+with cairo_context(800, 1200, output=f"pix/hilbert_compared.png") as ctx:
+    # confusing: product is (rows, cols)
+    seeds_sorters = itertools.product(SEEDS, [None, HilbertSortEveryLine()])
+    for (seed, sorter), tctx in zip(seeds_sorters, context_tiles(ctx, rows=3, cols=2)):
+        f = Fluidity(LinearNoise(seed=seed), npoints=10, nlines=1, curver=hobby_curve, sorter=sorter)
+        f.draw_in_context(tctx, curve_width=1, point_color=(1, 0, 0, 1), point_size=4, line_color=(0, 1, 0, 1), line_width=1)
