@@ -1,5 +1,6 @@
 # On mac will also need:
 #   brew install cmake pkgconf cairo
+cubic_bezier_spline
 hilbertcurve
 ipywidgets
 jupyterlab
