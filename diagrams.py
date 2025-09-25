@@ -15,7 +15,7 @@ if 0:
                 curve_width=1.5,
             )
 
-with cairo_context(600, 600, format="png", output=f"pix/repro_139.png") as context:
+with cairo_context(600, 600, format="png", output="pix/repro_139.png") as context:
     Fluidity(
         LinearNoise(seed=139, istep=0.001, istart=0.07),
         npoints=10, nlines=40, curver=hobby_curve, sorter=HilbertSortEveryLine()
@@ -25,6 +25,19 @@ with cairo_context(600, 600, format="png", output=f"pix/repro_139.png") as conte
         curve_width=1.5,
     )
 
-with cairo_context(400, 400, format="png", output=f"pix/point_motion.png") as context:
+with cairo_context(400, 400, format="png", output="pix/point_motion.png") as context:
     f = Fluidity(LinearNoise(seed=7, istep=0.03), npoints=4, nlines=50)
     f.draw_in_context(context, curve_color=None, point_color=(1, 0, 0, 1), point_size=1.5)
+
+
+for fname, sorter in [
+    ("hobby_unsorted.png", None),
+    ("hobby_sorted.png", HilbertSortEveryLine()),
+]:
+    fs = [
+        Fluidity(LinearNoise(seed=s), npoints=10, nlines=1, curver=hobby_curve, sorter=sorter)
+        for s in [0, 3, 5]
+    ]
+    with cairo_context(1200, 400, output=f"pix/{fname}") as ctx:
+        for f, tctx in zip(fs, context_tiles(ctx, rows=1, cols=3)):
+            f.draw_in_context(tctx, curve_width=1, point_color=(1, 0, 0, 1), point_size=4, line_color=(0, 1, 0, 1), line_width=1)

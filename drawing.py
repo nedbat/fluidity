@@ -155,6 +155,10 @@ def cairo_context(
         A PyCairo context proxy.
     """
 
+    if output is not None:
+        ext = output.partition(".")[-1]
+        if ext in ["svg", "png"]:
+            format = ext
     if format == "svg":
         cls = _CairoSvg
     elif format == "png":
