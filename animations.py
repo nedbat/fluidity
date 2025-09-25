@@ -23,4 +23,4 @@ for fname, sorter, curver in [
                 CircularNoise(seed=SEED, isteps=FRAMES, istep=ISTEP, istart=i), 
                 npoints=NPOINTS, nlines=NLINES, sorter=sorter, curver=curver,
             )
-            f.draw_in_context(anim.context, (600, 600), point_color=(1, 0, 0, 1))
+            f.draw_in_context(anim.context, point_color=(1, 0, 0, 1))

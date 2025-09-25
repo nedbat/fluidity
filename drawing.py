@@ -30,6 +30,9 @@ class _CairoContext:
         self.surface = None
         self.ctx = None
 
+    def size(self):
+        return (self.width, self.height)
+
     def _repr_pretty_(self, p, cycle_unused):
         """Plain text repr for the context."""
         # This is implemented just to limit needless changes in notebook files.
@@ -98,7 +101,7 @@ class _CairoSvg(_CairoContext):
     def __init__(self, width: int, height: int, output: str | None = None):
         super().__init__(width, height, output)
         self.svgio = io.BytesIO()
-        self.surface = cairo.SVGSurface(self.svgio, self.width, self.height)
+        self.surface = cairo.SVGSurface(self.svgio, *self.size())
         self.surface.set_document_unit(cairo.SVGUnit.PX)
         self.ctx = cairo.Context(self.surface)
 
@@ -119,7 +122,7 @@ class _CairoPng(_CairoContext):
     def __init__(self, width: int, height: int, output: str | None = None):
         super().__init__(width, height, output)
         self.pngio = None
-        self.surface = cairo.ImageSurface(cairo.Format.RGB24, self.width, self.height)
+        self.surface = cairo.ImageSurface(cairo.Format.RGB24, *self.size())
         self.ctx = cairo.Context(self.surface)
 
     def __exit__(self, typ, val, tb):

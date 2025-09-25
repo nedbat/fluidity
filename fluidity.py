@@ -186,13 +186,12 @@ class Fluidity:
         **kwargs,
     ):
         with cairo_context(*size, format=format) as context:
-            self.draw_in_context(context, size, **kwargs)
+            self.draw_in_context(context, **kwargs)
         return context
 
     def draw_in_context(
         self,
         context,
-        size,
         *,
         curve_color=(0, 0, 0, 1),
         curve_width=0.25,
@@ -201,7 +200,7 @@ class Fluidity:
         line_color=None,
         line_width=0.25,
     ):
-        sizew, sizeh = size
+        sizew, sizeh = context.size()
         scale_x = sizew / 2
         scale_y = sizeh / 2
         scale = min(scale_x, scale_y)
