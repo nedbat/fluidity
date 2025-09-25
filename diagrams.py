@@ -1,3 +1,5 @@
+# The diagrams for the blog post.
+
 from drawing import *
 from fluidity import *
 
