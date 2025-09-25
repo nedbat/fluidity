@@ -46,9 +46,48 @@ for fname, sorter in [
             f.draw_in_context(tctx, curve_width=1, point_color=(1, 0, 0, 1), point_size=4, line_color=(0, 1, 0, 1), line_width=1)
 
 
-with cairo_context(800, 1200, output=f"pix/hilbert_compared.png") as ctx:
+SEEDS = [0, 5, 3, 8]
+with cairo_context(800, len(SEEDS) * 400, output=f"pix/hilbert_compared.png") as ctx:
     # confusing: product is (rows, cols)
     seeds_sorters = itertools.product(SEEDS, [None, HilbertSortEveryLine()])
-    for (seed, sorter), tctx in zip(seeds_sorters, context_tiles(ctx, rows=3, cols=2)):
+    for (seed, sorter), tctx in zip(seeds_sorters, context_tiles(ctx, rows=len(SEEDS), cols=2)):
         f = Fluidity(LinearNoise(seed=seed), npoints=10, nlines=1, curver=hobby_curve, sorter=sorter)
         f.draw_in_context(tctx, curve_width=1, point_color=(1, 0, 0, 1), point_size=4, line_color=(0, 1, 0, 1), line_width=1)
+
+
+COLS = 2
+ROWS = 1
+W = 600
+SEEDS = [113, 139]
+NPT = 7
+fs = [
+    Fluidity(LinearNoise(seed=s, istep=.04), npoints=NPT, nlines=5, curver=hobby_curve, sorter=HilbertSortEveryLine())
+    for s in SEEDS
+]
+with cairo_context(W * COLS, W * ROWS, output="pix/small_runs.png") as ctx:
+    for f, tctx in zip(fs, context_tiles(ctx, rows=ROWS, cols=COLS)):
+        f.draw_in_context(tctx, curve_width=0.5, point_color=(1, 0, 0, 1), point_size=2)
+
+fs = [
+    Fluidity(LinearNoise(seed=s, istep=.01), npoints=NPT, nlines=20, curver=hobby_curve, sorter=HilbertSortEveryLine())
+    for s in SEEDS
+]
+with cairo_context(W * COLS, W * ROWS, output="pix/large_runs.png") as ctx:
+    for f, tctx in zip(fs, context_tiles(ctx, rows=ROWS, cols=COLS)):
+        f.draw_in_context(tctx, curve_width=0.5)
+
+fs = [
+    Fluidity(LinearNoise(seed=s, istep=.005), npoints=NPT, nlines=40, curver=hobby_curve, sorter=HilbertSortEveryLine())
+    for s in SEEDS
+]
+with cairo_context(W * COLS, W * ROWS, output="pix/larger_runs.png") as ctx:
+    for f, tctx in zip(fs, context_tiles(ctx, rows=ROWS, cols=COLS)):
+        f.draw_in_context(tctx, curve_width=1, curve_color=(0, 0, 0, 0.3))
+
+fs = [
+    Fluidity(LinearNoise(seed=s, istep=.005), npoints=NPT, nlines=40, curver=hobby_curve, sorter=HilbertSortFirstLine())
+    for s in SEEDS
+]
+with cairo_context(W * COLS, W * ROWS, output="pix/first_line_runs.png") as ctx:
+    for f, tctx in zip(fs, context_tiles(ctx, rows=ROWS, cols=COLS)):
+        f.draw_in_context(tctx, curve_width=1, curve_color=(0, 0, 0, 0.3))
