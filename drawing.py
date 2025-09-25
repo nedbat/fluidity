@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import itertools
 import math
 import os.path
 import subprocess
@@ -161,6 +162,32 @@ def cairo_context(
     else:
         raise ValueError(f"Unknown format: {format!r}")
     return cls(width, height, output)
+
+
+class SubContext:
+    def __init__(self, parent, width, height):
+        self.parent = parent
+        self.width = width
+        self.height = height
+
+    def size(self):
+        return (self.width, self.height)
+
+    def __getattr__(self, name):
+        return getattr(self.parent, name)
+
+
+def context_tiles(context, *, rows: int, cols: int, clip=True):
+    bigw, bigh = context.size()
+    smallw = bigw // cols
+    smallh = bigh // rows
+    for irow, icol in itertools.product(range(rows), range(cols)):
+        with context.save_restore():
+            context.translate(icol * smallw, irow * smallh)
+            if clip:
+                context.rectangle(0, 0, smallw, smallh)
+                context.clip()
+            yield SubContext(context, smallw, smallh)
 
 
 def svg_row(*svgs):
