@@ -199,6 +199,7 @@ class Fluidity:
         point_size=1,
         line_color=None,
         line_width=0.25,
+        point_colors=None,
     ):
         sizew, sizeh = context.size()
         scale_x = sizew / 2
@@ -223,10 +224,13 @@ class Fluidity:
             context.set_line_width(curve_width / scale)
             draw_dlists(context, self.dlists())
 
-        if point_color:
-            context.set_source_rgba(*point_color)
+        if point_color or point_colors:
+            if point_color:
+                assert point_colors is None
+                point_colors = [point_color] * self.npoints
             for line in self.lines:
-                for pt in line:
+                for pt, point_color in zip(line, point_colors):
+                    context.set_source_rgba(*point_color)
                     context.circle(*pt, point_size / scale)
                     context.fill()
 

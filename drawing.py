@@ -236,5 +236,5 @@ class Animation:
             f"magick -delay {self.frame_time} {self.tempdir}/frame_*.png -strip -coalesce -layers Optimize {self.output}",
             shell=True,
         )
-        print(f"Wrote {self.frame_num} frames to {self.output}")
+        print(f"Wrote {self.frame_num + 1} frames to {self.output}")
         self.tempdir_ctx.__exit__(typ, val, tb)
